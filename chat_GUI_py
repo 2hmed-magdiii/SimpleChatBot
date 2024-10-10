@@ -1,0 +1,95 @@
+from tkinter import *
+from main import load_knowledge_base, handle_user_input, add_new_answer, chat_bot, botname
+
+class Chat_GUI:
+    def __init__(self):
+        self.knowledge_base = load_knowledge_base('knowledge_base.json')
+        self.screen = Tk()
+        self.setup_main_screen()
+    
+    def setup_main_screen(self):
+        self.screen.title("Chat Bot")
+        self.screen.configure(width=700, height=700, bg="Blue")
+
+        head_screen_label = Label(self.screen, bg="Blue", fg="white", text="Welcome to my chat", font="Times 20 italic bold")
+        head_screen_label.place(relwidth=1)
+
+        self.text_widget = Text(self.screen, width=20, height=2, bg="White", fg="Black", font="Helvetica 14")
+        self.text_widget.place(relheight=0.745, relwidth=1, rely=0.08)
+        self.text_widget.configure(cursor="arrow", state=DISABLED)
+
+        scrollbar_screen = Scrollbar(self.text_widget)
+        scrollbar_screen.place(relheight=1, relx=0.97)
+        scrollbar_screen.configure(command=self.text_widget.yview)
+
+        bottom_label = Label(self.screen, bg="Blue", height=40)
+        bottom_label.place(relwidth=1, rely=0.825)
+
+        self.message_entry = Entry(bottom_label, bg="#C0C6C7", fg="Black", font="Helvetica 14")
+        self.message_entry.place(rely=0.07 ,relwidth=0.74, relheight=0.07)
+        self.message_entry.focus()
+        self.message_entry.bind("<Return>", self.on_enter_pressed)
+
+        send_button = Button(bottom_label, text="Send", font="Times 20 italic bold", width=30, height=10, bg="white",
+                             command=lambda: self.on_enter_pressed(None))
+        send_button.place(relx=.77, rely=0.08, relheight=0.06, relwidth=0.22)
+    
+    def on_enter_pressed(self, event):
+        message = self.message_entry.get()
+        if message.lower() == "quit":
+            self.screen.quit()
+            return
+        if message:
+            self.insert_message(message, "You")
+    
+    def insert_message(self, message, sender):
+        if not message:
+            return 
+        
+        self.message_entry.delete(0, END)
+        user_message = f"{sender}: {message}\n\n"
+        self.text_widget.configure(state=NORMAL)
+        self.text_widget.insert(END, user_message)
+        self.text_widget.configure(state=DISABLED)
+
+        bot_response = handle_user_input(message, self.knowledge_base)
+        bot_message = f"{botname}: {bot_response}\n\n"
+        self.text_widget.configure(state=NORMAL)
+        self.text_widget.insert(END, bot_message)
+        self.text_widget.configure(state=DISABLED)
+        self.text_widget.see(END)
+
+        if "I don't know the answer. Can you teach me?" in bot_response:
+            new_answer = self.prompt_for_new_answer()
+            if new_answer.lower() != "skip":
+                response = add_new_answer(message, new_answer, self.knowledge_base)
+                bot_message = f"{botname}: {response}\n\n"
+                self.text_widget.configure(state=NORMAL)
+                self.text_widget.insert(END, bot_message)
+                self.text_widget.configure(state=DISABLED)
+                self.text_widget.see(END)
+
+    def prompt_for_new_answer(self):
+        new_answer_window = Toplevel(self.screen)
+        new_answer_window.title("Teach Bot")
+        new_answer_window.configure(width=200, height=90, bg="Blue")
+        Label(new_answer_window, text="Type the answer or write 'skip'", font="Times 20 italic bold").pack()
+        new_answer_entry = Entry(new_answer_window, bg="#C0C6C7", fg="Blue", font="Helvetica 14")
+        new_answer_entry.pack()
+        new_answer_entry.focus()
+
+        def on_submit():
+            self.new_answer = new_answer_entry.get()
+            new_answer_window.destroy()
+
+        new_answer_button = Button(new_answer_window, text="Submit", font="Times 20 italic bold", height=1, bg="white", command=on_submit)
+        new_answer_button.pack()
+        self.screen.wait_window(new_answer_window)
+        return self.new_answer
+    
+    def run(self):
+        self.screen.mainloop()
+
+if __name__ == "__main__":
+    app = Chat_GUI()
+    app.run()
